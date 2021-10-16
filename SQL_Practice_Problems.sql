@@ -418,7 +418,7 @@ SELECT e.EmployeeID,
 	   JOIN TotalOrders t
 	     ON t.EmployeeID = e.EmployeeID
 	   LEFT JOIN LateOrders l
-	     ON t.EmployeeID = l.EmployeeID
+	          ON t.EmployeeID = l.EmployeeID
  ORDER BY EmployeeID;
 
  --45
@@ -441,7 +441,125 @@ SELECT e.EmployeeID,
 	   JOIN TotalOrders t
 	     ON t.EmployeeID = e.EmployeeID
 	   LEFT JOIN LateOrders l
-	     ON t.EmployeeID = l.EmployeeID
+	          ON t.EmployeeID = l.EmployeeID
  ORDER BY EmployeeID;
 
+ --46
+WITH LateOrders
+     AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS LateOrders
+           FROM Orders
+          WHERE RequiredDate <= ShippedDate
+          GROUP BY EmployeeID),
+     TotalOrders
+	 AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS AllOrders
+           FROM Orders
+          GROUP BY EmployeeID)
+SELECT e.EmployeeID,
+       e.LastName,
+	   t.AllOrders,
+       ISNULL(l.LateOrders, 0) AS LateOrders,
+	   ISNULL(CONVERT(float, l.LateOrders)/CONVERT(float, t.AllOrders), 0) AS PercentLateOrders
+  FROM Employees e
+	   JOIN TotalOrders t
+	     ON t.EmployeeID = e.EmployeeID
+	   LEFT JOIN LateOrders l
+	          ON t.EmployeeID = l.EmployeeID
+ ORDER BY EmployeeID;
 
+--47
+WITH LateOrders
+     AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS LateOrders
+           FROM Orders
+          WHERE RequiredDate <= ShippedDate
+          GROUP BY EmployeeID),
+     TotalOrders
+	 AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS AllOrders
+           FROM Orders
+          GROUP BY EmployeeID)
+SELECT e.EmployeeID,
+       e.LastName,
+	   t.AllOrders,
+       ISNULL(l.LateOrders, 0) AS LateOrders,
+	   ISNULL( CONVERT( decimal(6,2), CONVERT( float, l.LateOrders )/t.AllOrders ) , 0) AS PercentLateOrders
+  FROM Employees e
+	   JOIN TotalOrders t
+	     ON t.EmployeeID = e.EmployeeID
+	   LEFT JOIN LateOrders l
+	          ON t.EmployeeID = l.EmployeeID
+ ORDER BY EmployeeID;
+
+--48
+SELECT c.CustomerID,
+       c.CompanyName,
+       SUM(od.UnitPrice*od.Quantity) AS TotalOrderAmount,
+	   CASE 
+	       WHEN SUM(od.UnitPrice*od.Quantity) < 1000 THEN 'Low' 
+		   WHEN SUM(od.UnitPrice*od.Quantity) >= 1000 
+		    AND SUM(od.UnitPrice*od.Quantity) < 5000 THEN 'Medium'
+	   	   WHEN SUM(od.UnitPrice*od.Quantity) >= 5000 
+		    AND SUM(od.UnitPrice*od.Quantity) < 10000 THEN 'High'
+		   ELSE 'Very High'
+	   END AS CustomerGroup
+  FROM Customers c
+       JOIN Orders o
+	     ON c.CustomerID = o.CustomerID
+	   JOIN OrderDetails od
+	     ON o.OrderID = od.OrderID
+ WHERE OrderDate >= '2016-01-01 00:00:00' 
+   AND OrderDate < '2017-01-01 00:00:00'
+ GROUP BY c.CustomerID, c.CompanyName
+ ORDER BY CustomerID;
+
+--49
+SELECT c.CustomerID,
+       c.CompanyName,
+       SUM(od.UnitPrice*od.Quantity) AS TotalOrderAmount,
+	   CASE 
+	       WHEN SUM(od.UnitPrice*od.Quantity) < 1000 THEN 'Low' 
+		   WHEN SUM(od.UnitPrice*od.Quantity) >= 1000 
+		    AND SUM(od.UnitPrice*od.Quantity) < 5000 THEN 'Medium'
+	   	   WHEN SUM(od.UnitPrice*od.Quantity) >= 5000 
+		    AND SUM(od.UnitPrice*od.Quantity) < 10000 THEN 'High'
+		   ELSE 'Very High'
+	   END AS CustomerGroup
+  FROM Customers c
+       JOIN Orders o
+	     ON c.CustomerID = o.CustomerID
+	   JOIN OrderDetails od
+	     ON o.OrderID = od.OrderID
+ WHERE OrderDate >= '2016-01-01 00:00:00' 
+   AND OrderDate < '2017-01-01 00:00:00'
+ GROUP BY c.CustomerID, c.CompanyName
+ ORDER BY CustomerID;
+
+ --50
+ WITH CustomerGrouping
+      AS( SELECT c.CustomerID,
+	             COUNT(c.CustomerID) AS TotalCustomers,
+                 SUM(od.UnitPrice*od.Quantity) AS TotalOrderAmount,
+	             CASE 
+	                 WHEN SUM(od.UnitPrice*od.Quantity) < 1000 THEN 'Low' 
+		             WHEN SUM(od.UnitPrice*od.Quantity) >= 1000 
+		              AND SUM(od.UnitPrice*od.Quantity) < 5000 THEN 'Medium'
+	   	             WHEN SUM(od.UnitPrice*od.Quantity) >= 5000 
+		              AND SUM(od.UnitPrice*od.Quantity) < 10000 THEN 'High'
+		             ELSE 'Very High'
+	             END AS CustomerGroup
+            FROM Customers c
+            JOIN Orders o
+	          ON c.CustomerID = o.CustomerID
+	        JOIN OrderDetails od
+	          ON o.OrderID = od.OrderID
+           WHERE OrderDate >= '2016-01-01 00:00:00' 
+             AND OrderDate < '2017-01-01 00:00:00'
+           GROUP BY c.CustomerID)
+SELECT CustomerGroup,
+       COUNT(CustomerGroup) AS TotalInGroup,
+	   CONVERT( decimal(6,2), CONVERT( float, COUNT(CustomerGroup))/TotalCustomers) AS PercentageInGroup
+  FROM CustomerGrouping
+ GROUP BY TotalCustomers, CustomerGroup
+ ORDER BY TotalInGroup DESC
