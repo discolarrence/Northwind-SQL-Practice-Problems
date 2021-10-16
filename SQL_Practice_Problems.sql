@@ -374,3 +374,74 @@ SELECT o.EmployeeID,
  GROUP BY o.EmployeeID,
           e.LastName
  ORDER BY TotalLateOrders DESC; 
+
+--43
+WITH LateOrders
+     AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS LateOrders
+           FROM Orders
+          WHERE RequiredDate <= ShippedDate
+          GROUP BY EmployeeID),
+     TotalOrders
+	 AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS AllOrders
+           FROM Orders
+          GROUP BY EmployeeID)
+SELECT e.EmployeeID,
+       e.LastName,
+	   t.AllOrders,
+       l.LateOrders	   
+  FROM Employees e
+	   JOIN TotalOrders t
+	     ON t.EmployeeID = e.EmployeeID
+	   JOIN LateOrders l
+	     ON t.EmployeeID = l.EmployeeID
+ ORDER BY EmployeeID; 
+
+ --44
+WITH LateOrders
+     AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS LateOrders
+           FROM Orders
+          WHERE RequiredDate <= ShippedDate
+          GROUP BY EmployeeID),
+     TotalOrders
+	 AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS AllOrders
+           FROM Orders
+          GROUP BY EmployeeID)
+SELECT e.EmployeeID,
+       e.LastName,
+	   t.AllOrders,
+       l.LateOrders	   
+  FROM Employees e
+	   JOIN TotalOrders t
+	     ON t.EmployeeID = e.EmployeeID
+	   LEFT JOIN LateOrders l
+	     ON t.EmployeeID = l.EmployeeID
+ ORDER BY EmployeeID;
+
+ --45
+WITH LateOrders
+     AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS LateOrders
+           FROM Orders
+          WHERE RequiredDate <= ShippedDate
+          GROUP BY EmployeeID),
+     TotalOrders
+	 AS (SELECT EmployeeID,
+                COUNT(EmployeeID) AS AllOrders
+           FROM Orders
+          GROUP BY EmployeeID)
+SELECT e.EmployeeID,
+       e.LastName,
+	   t.AllOrders,
+       ISNULL(l.LateOrders, 0)	   
+  FROM Employees e
+	   JOIN TotalOrders t
+	     ON t.EmployeeID = e.EmployeeID
+	   LEFT JOIN LateOrders l
+	     ON t.EmployeeID = l.EmployeeID
+ ORDER BY EmployeeID;
+
+
