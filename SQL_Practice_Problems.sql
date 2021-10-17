@@ -627,7 +627,7 @@ SELECT cl.Country AS Country,
 	     ON cl.Country = c.Country
        FULL OUTER JOIN SupplierCountries s
 	     ON cl.Country = s.Country
- ORDER BY cl.Country
+ ORDER BY cl.Country;
 
 --55
 WITH RowNumbers
@@ -646,5 +646,29 @@ SELECT ShipCountry,
  ORDER BY ShipCountry
 
 --56
+SELECT f.CustomerID,
+       f.OrderID AS FirstOrderID,
+	   CONVERT(DATE, f.OrderDate) AS FirstOrderDate,
+       n.OrderID AS NextOrderID,
+	   CONVERT(DATE, n.OrderDate) AS NextOrderDate,
+	   DATEDIFF(dd, f.OrderDate, n.OrderDate) AS DaysBetween
+  FROM Orders f
+       JOIN Orders n
+	     ON f.CustomerID = n.CustomerID
+ WHERE f.OrderID < n.OrderID
+   AND DATEDIFF(dd, f.OrderDate, n.OrderDate) <= 5
+ ORDER BY f.CustomerID, f.OrderID;
 
 --57
+WITH DaysBetweenOrders
+     AS (SELECT CustomerID,
+				CONVERT(Date, OrderDate) AS OrderDate,
+	            LEAD(OrderDate, 1) OVER(PARTITION BY CustomerID ORDER BY OrderDate) AS NextOrderDate
+            FROM Orders)
+SELECT CustomerID,
+       OrderDate,
+	   NextOrderDate,
+	   DATEDIFF(dd, OrderDate, NextOrderDate) AS DaysBetween
+  FROM DaysBetweenOrders
+ WHERE DATEDIFF(dd, OrderDate, NextOrderDate) <= 5
+ ORDER BY CustomerID
