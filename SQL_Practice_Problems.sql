@@ -395,7 +395,7 @@ SELECT e.EmployeeID,
 	   JOIN TotalOrders t
 	     ON t.EmployeeID = e.EmployeeID
 	   JOIN LateOrders l
-	     ON t.EmployeeID = l.EmployeeID
+	     ON l.EmployeeID = e.EmployeeID
  ORDER BY EmployeeID; 
 
  --44
@@ -484,7 +484,7 @@ SELECT e.EmployeeID,
        e.LastName,
 	   t.AllOrders,
        ISNULL(l.LateOrders, 0) AS LateOrders,
-	   ISNULL( CONVERT( decimal(6,2), CONVERT( float, l.LateOrders )/t.AllOrders ) , 0) AS PercentLateOrders
+	   ISNULL( CONVERT( decimal(6,2), l.LateOrders * 1.00 )/t.AllOrders, 0) AS PercentLateOrders
   FROM Employees e
 	   JOIN TotalOrders t
 	     ON t.EmployeeID = e.EmployeeID
@@ -558,8 +558,93 @@ SELECT c.CustomerID,
              AND OrderDate < '2017-01-01 00:00:00'
            GROUP BY c.CustomerID)
 SELECT CustomerGroup,
-       COUNT(CustomerGroup) AS TotalInGroup,
-	   CONVERT( decimal(6,2), CONVERT( float, COUNT(CustomerGroup))/TotalCustomers) AS PercentageInGroup
+       COUNT(CustomerGroup) AS TotalInGroup,	   
+	   CONVERT( decimal(6,2), COUNT(CustomerGroup)*1.00/(SELECT COUNT(TotalCustomers) FROM CustomerGrouping)) AS PercentageInGroup
   FROM CustomerGrouping
- GROUP BY TotalCustomers, CustomerGroup
- ORDER BY TotalInGroup DESC
+ GROUP BY CustomerGroup
+ ORDER BY TotalInGroup DESC;
+
+--51
+WITH Orders2016 
+     AS( SELECT c.CustomerID,
+	            c.CompanyName,
+                SUM(od.UnitPrice*od.Quantity) AS TotalOrderAmount
+           FROM Customers c
+               JOIN Orders o
+	             ON c.CustomerID = o.CustomerID
+	           JOIN OrderDetails od
+	             ON o.OrderID = od.OrderID
+          WHERE OrderDate >= '2016-01-01 00:00:00' 
+            AND OrderDate < '2017-01-01 00:00:00'
+          GROUP BY c.CustomerID, c.CompanyName)
+SELECT o.CustomerID,
+	   o.CompanyName,
+       o.TotalOrderAmount,
+	   c.CustomerGroupName
+  FROM Orders2016 o
+       JOIN CustomerGroupThresholds c
+	     ON o.TotalOrderAmount BETWEEN c.RangeBottom AND c.RangeTop
+
+--52
+SELECT Country
+  FROM Suppliers
+ UNION
+SELECT Country
+  FROM Customers
+ ORDER BY Country
+
+--53
+SELECT c.Country AS CustomerCountry,
+       s.Country AS SupplierCountry
+  FROM Customers c
+       FULL OUTER JOIN Suppliers s
+	                ON c.Country = s.Country
+ GROUP BY c.Country,
+          s.Country;
+
+--54
+WITH SupplierCountries
+     AS (SELECT Country,
+	            COUNT(SupplierID) AS TotalSuppliers
+           FROM Suppliers
+          GROUP BY Country),
+     CustomerCountries
+	 AS (SELECT Country,
+	            COUNT(CustomerID) AS TotalCustomers
+				FROM Customers
+                GROUP BY Country),
+	CountryList
+	AS (SELECT Country
+          FROM Suppliers
+         UNION
+        SELECT Country
+          FROM Customers)
+SELECT cl.Country AS Country,
+	   ISNULL(s.TotalSuppliers, 0) AS TotalSuppliers,
+	   ISNULL(c.TotalCustomers, 0) AS TotalCustomers
+  FROM CountryList cl
+       FULL OUTER JOIN CustomerCountries c
+	     ON cl.Country = c.Country
+       FULL OUTER JOIN SupplierCountries s
+	     ON cl.Country = s.Country
+ ORDER BY cl.Country
+
+--55
+WITH RowNumbers
+     AS (SELECT ShipCountry,
+	            CustomerID,
+				OrderID,
+				CONVERT(Date, OrderDate) AS OrderDate,
+	            ROW_NUMBER() OVER(PARTITION BY ShipCountry ORDER BY OrderDate) AS RowNumber
+            FROM Orders)
+SELECT ShipCountry,
+       CustomerID,
+	   OrderID,
+	   OrderDate
+  FROM RowNumbers 
+ WHERE RowNumber = 1   
+ ORDER BY ShipCountry
+
+--56
+
+--57
